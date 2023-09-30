@@ -32,6 +32,8 @@ target_link_libraries(fb_encoder PRIVATE flatbuffers)
 set(FLATBUFFERS_SCHEMA_DIR ${CMAKE_SOURCE_DIR}/flatbuffers_schemas)
 set(FLATBUFFERS_GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
 
+message("${FLATBUFFERS_GENERATED_DIR}")
+
 add_custom_command(
     OUTPUT ${FLATBUFFERS_GENERATED_DIR}/client_generated.h
     COMMAND flatc --cpp -o ${FLATBUFFERS_GENERATED_DIR} ${FLATBUFFERS_SCHEMA_DIR}/client.fbs
@@ -43,3 +45,6 @@ target_include_directories(fb_encoder PRIVATE ${FLATBUFFERS_GENERATED_DIR})
 
 # Add the generated header as a dependency for your project
 target_sources(fb_encoder PRIVATE ${FLATBUFFERS_GENERATED_DIR}/client_generated.h)
+
+#get_target_property(fb_encoder_include_dirs fb_encoder INCLUDE_DIRECTORIES)
+#message("${fb_encoder_include_dirs}")

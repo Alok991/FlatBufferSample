@@ -1,3 +1,8 @@
+#include <client_generated.h>
 #include <iostream>
 
-int main() { std::cout << "Hello world\n"; }
+int main(int argc, char const *argv[]) {
+  fb::Gender g = fb::Gender::Gender_Female;
+  std::cout << (int)g;
+  return 0;
+}
