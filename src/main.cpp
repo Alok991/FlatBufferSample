@@ -2,7 +2,27 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <variant>
 #include <vector>
+
+namespace {
+struct Person {
+  std::string name;
+  float age;
+  float weight;
+  bool is_male;
+};
+
+struct Group {
+  std::string name;
+  float avg_age;
+  float avg_weight;
+  std::vector<std::string> all_names;
+};
+
+typedef std::variant<std::monostate, Person, Group> ClientU;
+
+} // namespace
 
 // input data for encoder could be coming from any source, DataSource
 // DataSource could be a json file, char[] or network stream
@@ -17,9 +37,26 @@ public:
       : data_src(std::forward<DataSource>(data_src)),
         data_sink(std::forward<DataSink>(data_sink)) {}
 
-  void encodePerson() {
-    auto [person_name, person_age, person_weight, person_is_male] =
-        data_src.get_next_person();
+  void start_encoding() {
+    while (true) { // this simulate inf data stream
+      ClientU data = data_src.get_next_data();
+      if (std::holds_alternative<Person>(data)) {
+        auto person = std::get<Person>(data);
+        encodePerson(person);
+      } else if (std::holds_alternative<Group>(data)) {
+        auto grp = std::get<Group>(data);
+        encodeGroup(grp);
+      } else {
+        break;
+      }
+    }
+  }
+
+  void encodePerson(const Person &person_arg) {
+    auto &&person_name = person_arg.name;
+    auto &&person_age = person_arg.age;
+    auto &&person_weight = person_arg.weight;
+    auto &&person_is_male = person_arg.is_male;
 
     flatbuffers::FlatBufferBuilder builder;
     auto name = builder.CreateString(person_name);
@@ -34,9 +71,11 @@ public:
                     builder.GetSize());
   }
 
-  void encodeGroup() {
-    auto [grp_name, grp_avg_age, grp_avg_weight, grp_names_list] =
-        data_src.get_next_group();
+  void encodeGroup(const Group &grp) {
+    auto &&grp_name = grp.name;
+    auto &&grp_avg_age = grp.avg_age;
+    auto &&grp_avg_weight = grp.avg_weight;
+    auto &&grp_names_list = grp.all_names;
 
     flatbuffers::FlatBufferBuilder builder;
 
@@ -62,18 +101,36 @@ public:
 };
 
 struct DummySource {
-  std::tuple<std::string, float, float, bool> get_next_person() {
-    return std::make_tuple("Ram", 21, 76.5, true);
-  }
-  std::tuple<std::string, float, float, std::vector<std::string>>
-  get_next_group() {
-    return std::make_tuple(
-        std::string("FightClub"), 24.5, 66,
-        std::vector<std::string>{"Ram", "Shayam", "Raghuveer"});
+private:
+  int counter = 0;
+
+public:
+  ClientU get_next_data() {
+    ClientU data = std::monostate{};
+
+    if (counter == 0) {
+      Person person;
+      person.name = "Ram";
+      person.age = 21;
+      person.weight = 76.5;
+      person.is_male = true;
+
+      data = person;
+    } else if (counter == 1) {
+      Group grp;
+      grp.name = "FlightClub";
+      grp.avg_age = 24.5;
+      grp.avg_weight = 66;
+      grp.all_names = std::vector<std::string>{"Ram", "Shayam", "Raghuveer"};
+      data = grp;
+    }
+    ++counter;
+    return data;
   }
 };
 
 class FileSink {
+
 public:
   FileSink(const std::string &filename) {
     file_stream.open(filename, std::ios::out | std::ios::binary);
@@ -103,8 +160,9 @@ public:
     return *this;
   }
 
-  void write(const char *data, std::size_t size) {
+  void write(const char *data, uint64_t size) {
     if (file_stream.is_open()) {
+      file_stream.write((const char *)&size, sizeof(uint64_t));
       file_stream.write(data, size);
     }
   }
@@ -121,14 +179,12 @@ int main(int argc, char const *argv[]) {
                  "<path-to-fb_bytes.bin>\n";
     return EXIT_FAILURE;
   }
-  // Hard coded in assignment, Should not be done in production
 
   DummySource data_source;
   FileSink data_sink(argv[1]);
 
   ClientEncoder encoder(std::move(data_source), std::move(data_sink));
 
-  encoder.encodePerson();
-  encoder.encodeGroup();
+  encoder.start_encoding();
   return EXIT_SUCCESS;
 }
