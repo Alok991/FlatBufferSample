@@ -1,4 +1,5 @@
 Steps to build and run
+1. git submodule update --init --recursive
 1. mkdir build
 2. cd build
 3. cmake -DCMAKE_BUILD_TYPE=Release ..
