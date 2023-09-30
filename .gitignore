@@ -1,0 +1,11 @@
+/build*
+/.vscode
+/cpm_modules
+.DS_Store
+CMakeCache.txt
+CMakeFiles
+.idea
+cmake-build-debug
+.envrc
+.direnv
+.env
